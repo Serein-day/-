@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Territory Sim</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  background: #0a0a1a; color: #c8c8d4;
+  display:flex; height:100vh; overflow:hidden;
+  user-select:none; -webkit-user-select:none;
+}
+
+/* ===== Left Panel ===== */
+#panel {
+  width: 300px; min-width: 300px; background: #12122a;
+  display:flex; flex-direction:column; border-right: 1px solid #2a2a45;
+  z-index:10;
+}
+#panel-header {
+  padding: 16px 20px; border-bottom: 1px solid #2a2a45;
+  font-size: 18px; font-weight:700; letter-spacing: 2px;
+  color: #e0e0f0; text-align:center; position:relative;
+}
+#panel-header span { color: #7c8cf8; }
+#lang-switch {
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+}
+#lang-switch select {
+  padding:3px 6px; border:1px solid #3a3a55; border-radius:4px;
+  background:#1a1a30; color:#a0a0c0; font-size:11px; cursor:pointer; outline:none;
+}
+#lang-switch select:focus { border-color:#7c8cf8; }
+
+/* Region List */
+#region-section { padding: 12px 16px; border-bottom: 1px solid #1e1e3a; }
+.section-title { font-size:11px; text-transform:uppercase; letter-spacing:2px; color:#6a6a8a; margin-bottom:8px; }
+#region-list { display:flex; flex-wrap:wrap; gap:6px; max-height:140px; overflow-y:auto; }
+.region-chip {
+  display:flex; align-items:center; gap:6px; padding:5px 10px;
+  border-radius:14px; cursor:pointer; font-size:13px;
+  border:2px solid transparent; transition: all .15s;
+}
+.region-chip:hover { filter: brightness(1.3); }
+.region-chip.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.2); }
+.region-chip .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.region-chip .name { max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.region-chip .del { margin-left:2px; opacity:0.5; font-size:11px; cursor:pointer; }
+.region-chip .del:hover { opacity:1; color:#f55; }
+
+#btn-new-region {
+  margin-top:8px; padding:6px 14px; background:#2a2a50; border:1px dashed #5a5a8a;
+  border-radius:14px; color:#a0a0c0; cursor:pointer; font-size:12px; width:100%;
+  transition: all .15s;
+}
+#btn-new-region:hover { background:#3a3a60; color:#fff; }
+
+/* Properties */
+#prop-section { padding:12px 16px; border-bottom:1px solid #1e1e3a; flex:1; overflow-y:auto; }
+#no-region-hint { color:#4a4a6a; font-size:13px; text-align:center; padding:20px 0; }
+#region-props { display:none; }
+#region-props.active { display:block; }
+.prop-row { margin-bottom:12px; }
+.prop-row label { display:flex; justify-content:space-between; font-size:12px; color:#8a8aaa; margin-bottom:3px; }
+.prop-row label .val { color:#c0c0e0; font-weight:600; }
+.prop-row input[type=range] {
+  -webkit-appearance:none; width:100%; height:4px; border-radius:2px;
+  background: #2a2a45; outline:none;
+}
+.prop-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  cursor:pointer; border:2px solid #7c8cf8; background:#1a1a3a;
+}
+#prop-name {
+  width:100%; padding:6px 10px; background:#1a1a30; border:1px solid #3a3a55;
+  border-radius:6px; color:#d0d0e0; font-size:13px; outline:none;
+}
+#prop-name:focus { border-color:#7c8cf8; }
+#prop-color {
+  width:100%; height:32px; border:none; border-radius:6px; cursor:pointer;
+  background:transparent;
+}
+
+/* Controls */
+#ctrl-section { padding:12px 16px; border-top:1px solid #1e1e3a; }
+#btn-sim {
+  width:100%; padding:10px; border:none; border-radius:8px;
+  font-size:15px; font-weight:700; cursor:pointer; letter-spacing:1px;
+  transition: all .2s;
+}
+#btn-sim.start { background:#4c5cf0; color:#fff; }
+#btn-sim.start:hover { background:#5d6dff; }
+#btn-sim.stop { background:#e04040; color:#fff; }
+#btn-sim.stop:hover { background:#f05050; }
+#btn-sim:disabled { background:#2a2a40; color:#5a5a7a; cursor:not-allowed; }
+
+#btn-undo {
+  width:100%; margin-top:8px; padding:8px; border:1px solid #3a3a55; border-radius:6px;
+  background:transparent; color:#8a8aa0; font-size:12px; cursor:pointer; transition:all .2s;
+}
+#btn-undo:hover { border-color:#7c8cf8; color:#c0c0e0; }
+#btn-undo:disabled { border-color:#2a2a40; color:#4a4a6a; cursor:not-allowed; }
+
+#map-upload-area {
+  padding:0 16px 0 16px;
+}
+#btn-upload-map {
+  width:100%; padding:7px; border:1px dashed #4a4a7a; border-radius:6px;
+  background:transparent; color:#8a8ab0; font-size:12px; cursor:pointer; transition:all .2s;
+}
+#btn-upload-map:hover { border-color:#7c8cf8; color:#c0c0ff; }
+#btn-upload-map.has-map { border-style:solid; border-color:#4a8a5a; color:#8ac8a0; width:calc(100% - 28px); }
+#btn-remove-map {
+  padding:7px 8px; border:1px solid #5a3a3a; border-radius:6px;
+  background:transparent; color:#aa6060; font-size:12px; cursor:pointer; transition:all .2s;
+  margin-left:4px;
+}
+#btn-remove-map:hover { background:#3a2020; color:#ff6060; }
+#map-upload-hint {
+  font-size:10px; color:#4a4a6a; text-align:center; margin-top:4px;
+}
+
+#sim-info { margin-top:10px; font-size:12px; color:#6a6a8a; display:flex; justify-content:space-between; }
+#speed-control { display:flex; align-items:center; gap:6px; margin-top:8px; }
+#speed-control label { font-size:11px; color:#6a6a8a; }
+#speed-control input[type=range] { flex:1; -webkit-appearance:none; height:3px; background:#2a2a45; border-radius:2px; }
+#speed-control input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#7c8cf8; cursor:pointer; }
+#speed-val { font-size:11px; color:#a0a0c0; min-width:30px; }
+
+/* Brush info */
+#brush-info { font-size:11px; color:#5a5a7a; text-align:center; padding:6px; }
+#brush-info .active { color:#7c8cf8; font-weight:600; }
+
+/* ===== Canvas Area ===== */
+#canvas-wrap {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:#080818; position:relative; overflow:hidden; padding:12px;
+}
+
+#brush-toolbar {
+  display:flex; align-items:center; gap:4px; padding:6px 12px;
+  background:rgba(18,18,40,0.85); border-radius:8px; margin-bottom:8px;
+  border:1px solid #2a2a45; backdrop-filter:blur(4px);
+}
+.tb-label { font-size:10px; color:#6a6a8a; text-transform:uppercase; letter-spacing:1px; }
+.tb-btn {
+  padding:4px 9px; border:1px solid #3a3a55; border-radius:4px;
+  background:transparent; color:#8a8aa0; font-size:11px; cursor:pointer; transition:all .15s;
+  font-weight:600;
+}
+.tb-btn:hover { border-color:#7c8cf8; color:#c0c0e0; }
+.tb-btn.active { background:#3a3a60; border-color:#7c8cf8; color:#e0e0f0; }
+.tb-eraser.active { background:#5a3030; border-color:#e04040; color:#ff8080; }
+.tb-sep { width:1px; height:16px; background:#3a3a55; margin:0 6px; }
+canvas {
+  cursor:crosshair; border-radius:4px;
+  box-shadow:0 0 40px rgba(124,140,248,0.08);
+  width:100%; height:100%; object-fit:contain;
+}
+canvas.simulating { cursor:default; }
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#3a3a55; border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <div id="panel-header">🌍 <span id="hdr1">Territory</span><span id="hdr2">Sim</span>
+    <div id="lang-switch">
+      <select id="lang-select" onchange="setLang(this.value)">
+        <option value="en">English</option>
+        <option value="zh">中文</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+        <option value="ru">Русский</option>
+        <option value="pt">Português</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="region-section">
+    <div class="section-title">📋 势力区域</div>
+    <div id="region-list"></div>
+    <button id="btn-new-region">＋ 新建区域</button>
+  </div>
+
+  <div id="prop-section">
+    <div id="no-region-hint">← 选择一个区域或新建</div>
+    <div id="region-props">
+      <div class="prop-row">
+        <label>名称</label>
+        <input id="prop-name" type="text" placeholder="区域名称" maxlength="10">
+      </div>
+      <div class="prop-row">
+        <label>颜色</label>
+        <input id="prop-color" type="color" value="#4c7cf0">
+      </div>
+      <div class="prop-row">
+        <label>🔬 科技 <span class="val" id="val-tech">50</span></label>
+        <input id="prop-tech" type="range" min="0" max="100" value="50">
+      </div>
+      <div class="prop-row">
+        <label>🎭 文化 <span class="val" id="val-culture">50</span></label>
+        <input id="prop-culture" type="range" min="0" max="100" value="50">
+      </div>
+      <div class="prop-row">
+        <label>⚖️ 政治 <span class="val" id="val-pol">50</span></label>
+        <input id="prop-politics" type="range" min="0" max="100" value="50">
+      </div>
+      <div class="prop-row">
+        <label>🕯️ 宗教 <span class="val" id="val-rel">50</span></label>
+        <input id="prop-religion" type="range" min="0" max="100" value="50">
+      </div>
+    </div>
+  </div>
+
+  <div id="ctrl-section">
+    <button id="btn-sim" class="start" disabled>▶ 开始推演</button>
+    <div id="sim-info">
+      <span>Round: <b id="round-display">0</b></span>
+      <span id="stability-msg"></span>
+    </div>
+    <div id="speed-control">
+      <label>速度</label>
+      <input id="speed-slider" type="range" min="0.25" max="5" step="0.25" value="1">
+      <span id="speed-val">1×</span>
+    </div>
+    <button id="btn-undo" title="撤销上一笔涂抹 (Ctrl+Z)" disabled>↩ 撤销涂抹</button>
+  </div>
+
+  <div id="map-upload-area">
+    <button id="btn-upload-map">🗺️ Upload Map</button>
+    <button id="btn-remove-map" style="display:none" title="Remove custom map">✕</button>
+    <input type="file" id="file-upload" accept="image/*" style="display:none">
+    <div id="map-upload-hint">or drag & drop an image onto the canvas</div>
+  </div>
+
+  <div id="brush-info">🖌️ 在画布上< span class="active">涂抹</span>划分势力范围</div>
+</div>
+
+<div id="canvas-wrap">
+  <div id="brush-toolbar">
+    <button id="mode-brush" class="tb-btn active" title="Freehand brush">🖌 Brush</button>
+    <button id="mode-line" class="tb-btn" title="Line: click start → end">╱ Line</button>
+    <button id="mode-rect" class="tb-btn" title="Rectangle: drag a box">▭ Rect</button>
+    <button id="mode-fill" class="tb-btn" title="Fill: click to flood-fill area">💧 Fill</button>
+    <span class="tb-sep"></span>
+    <span class="tb-label">Size</span>
+    <button id="brush-s" class="tb-btn active" data-size="2" title="Small">S</button>
+    <button id="brush-m" class="tb-btn" data-size="3" title="Medium">M</button>
+    <button id="brush-l" class="tb-btn" data-size="5" title="Large">L</button>
+    <span class="tb-sep"></span>
+    <button id="brush-eraser" class="tb-btn tb-eraser" title="Erase territory">⌫ Erase</button>
+  </div>
+  <canvas id="canvas"></canvas>
+</div>
+
+<script>
+// ==================== CONSTANTS ====================
+const GRID_SCALE = 4; // each grid cell = 4x4 canvas pixels
+const CANVAS_W = 880;
+const CANVAS_H = 480;
+const GRID_W = Math.floor(CANVAS_W / GRID_SCALE); // 220
+const GRID_H = Math.floor(CANVAS_H / GRID_SCALE); // 120
+let BRUSH_RADIUS = 2; // grid cells (adjustable via toolbar)
+const OCEAN_ID = 0;
+const MAX_REGIONS = 10;
+
+// ==================== I18N ====================
+const I18N = {
+  en: {
+    title: 'Territory Sim',
+    header1: 'Territory',
+    header2: 'Sim',
+    regions: 'Factions',
+    newRegion: '+ New Faction',
+    selectHint: '← Select or create a faction',
+    name: 'Name',
+    color: 'Color',
+    tech: 'Tech',
+    culture: 'Culture',
+    politics: 'Politics',
+    religion: 'Religion',
+    startSim: '▶ Start Simulation',
+    stopSim: '⏸ Stop Simulation',
+    round: 'Round',
+    speed: 'Speed',
+    undo: '↩ Undo Brush',
+    brushInfo: 'Select a faction, then paint on the map',
+    brushActive: 'Painting',
+    stabilityBalanced: '⚖️ Balance achieved — simulation ended',
+    stabilityOne: ' unified the world!',
+    noAdjacent: '⚠️ Factions not adjacent — paint them touching each other',
+    noAdjacentStop: '⚠️ Factions isolated — paint the full map',
+    eroding: 'eroding',
+    annexed: 'annexed',
+    cells: 'cells',
+    placeholderName: 'Faction name',
+  },
+  zh: {
+    title: '版图推演', header1: '版图', header2: '推演', regions: '势力区域',
+    newRegion: '＋ 新建区域', selectHint: '← 选择一个区域或新建',
+    name: '名称', color: '颜色', tech: '科技', culture: '文化', politics: '政治', religion: '宗教',
+    startSim: '▶ 开始推演', stopSim: '⏸ 停止推演', round: '回合', speed: '速度',
+    undo: '↩ 撤销涂抹', brushInfo: '选择一个区域后在画布上涂抹划分势力', brushActive: '正在涂抹',
+    stabilityBalanced: '⚖️ 各方势力达到均衡，推演结束', stabilityOne: ' 统一了世界！',
+    noAdjacent: '⚠️ 各区域不相邻，请用画笔让区域接壤', noAdjacentStop: '⚠️ 区域未接壤，无法推演',
+    eroding: '侵蚀', annexed: '吞并', cells: '格', placeholderName: '区域名称',
+  },
+  es: {
+    title: 'Simulador Territorial', header1: 'Territorio', header2: 'Sim',
+    regions: 'Facciónes', newRegion: '+ Nueva Facción', selectHint: '← Selecciona o crea una facción',
+    name: 'Nombre', color: 'Color', tech: 'Tecnología', culture: 'Cultura', politics: 'Política', religion: 'Religión',
+    startSim: '▶ Iniciar', stopSim: '⏸ Detener', round: 'Turno', speed: 'Velocidad',
+    undo: '↩ Deshacer', brushInfo: 'Selecciona una facción y pinta en el mapa', brushActive: 'Pintando',
+    stabilityBalanced: '⚖️ Equilibrio alcanzado', stabilityOne: ' unificó el mundo!',
+    noAdjacent: '⚠️ Las facciones no son adyacentes', noAdjacentStop: '⚠️ Facciones aisladas',
+    eroding: 'erosionando', annexed: 'anexó', cells: 'celdas', placeholderName: 'Nombre',
+  },
+  fr: {
+    title: 'Simulateur Territorial', header1: 'Territoire', header2: 'Sim',
+    regions: 'Factions', newRegion: '+ Nouvelle Faction', selectHint: '← Sélectionnez ou créez une faction',
+    name: 'Nom', color: 'Couleur', tech: 'Technologie', culture: 'Culture', politics: 'Politique', religion: 'Religion',
+    startSim: '▶ Démarrer', stopSim: '⏸ Arrêter', round: 'Tour', speed: 'Vitesse',
+    undo: '↩ Annuler', brushInfo: 'Sélectionnez une faction et peignez sur la carte', brushActive: 'Peinture',
+    stabilityBalanced: '⚖️ Équilibre atteint', stabilityOne: ' a unifié le monde!',
+    noAdjacent: '⚠️ Factions non adjacentes', noAdjacentStop: '⚠️ Factions isolées',
+    eroding: 'érode', annexed: 'a annexé', cells: 'cellules', placeholderName: 'Nom',
+  },
+  de: {
+    title: 'Territorium-Sim', header1: 'Territorium', header2: 'Sim',
+    regions: 'Fraktionen', newRegion: '+ Neue Fraktion', selectHint: '← Fraktion wählen oder erstellen',
+    name: 'Name', color: 'Farbe', tech: 'Technologie', culture: 'Kultur', politics: 'Politik', religion: 'Religion',
+    startSim: '▶ Start', stopSim: '⏸ Stopp', round: 'Runde', speed: 'Tempo',
+    undo: '↩ Rückgängig', brushInfo: 'Fraktion wählen und auf Karte malen', brushActive: 'Malen',
+    stabilityBalanced: '⚖️ Gleichgewicht erreicht', stabilityOne: ' hat die Welt vereint!',
+    noAdjacent: '⚠️ Fraktionen nicht benachbart', noAdjacentStop: '⚠️ Fraktionen isoliert',
+    eroding: 'erodiert', annexed: 'annektierte', cells: 'Zellen', placeholderName: 'Name',
+  },
+  ja: {
+    title: '領土シミュレーション', header1: '領土', header2: 'Sim',
+    regions: '勢力', newRegion: '+ 新勢力', selectHint: '← 勢力を選択または作成',
+    name: '名前', color: '色', tech: '技術', culture: '文化', politics: '政治', religion: '宗教',
+    startSim: '▶ 開始', stopSim: '⏸ 停止', round: 'ターン', speed: '速度',
+    undo: '↩ 元に戻す', brushInfo: '勢力を選んで地図に描く', brushActive: '描画中',
+    stabilityBalanced: '⚖️ 均衡に達しました', stabilityOne: ' が世界を統一！',
+    noAdjacent: '⚠️ 勢力が隣接していません', noAdjacentStop: '⚠️ 勢力が孤立しています',
+    eroding: '侵食', annexed: '併合', cells: 'セル', placeholderName: '名前',
+  },
+  ko: {
+    title: '영토 시뮬레이션', header1: '영토', header2: 'Sim',
+    regions: '세력', newRegion: '+ 새 세력', selectHint: '← 세력을 선택 또는 생성',
+    name: '이름', color: '색상', tech: '기술', culture: '문화', politics: '정치', religion: '종교',
+    startSim: '▶ 시작', stopSim: '⏸ 정지', round: '턴', speed: '속도',
+    undo: '↩ 실행취소', brushInfo: '세력을 선택하고 지도에 칠하기', brushActive: '칠하는 중',
+    stabilityBalanced: '⚖️ 균형 도달', stabilityOne: ' 세계 통일!',
+    noAdjacent: '⚠️ 세력이 인접하지 않음', noAdjacentStop: '⚠️ 세력이 고립됨',
+    eroding: '침식', annexed: '합병', cells: '칸', placeholderName: '이름',
+  },
+  ru: {
+    title: 'Симулятор Территорий', header1: 'Территория', header2: 'Сим',
+    regions: 'Фракции', newRegion: '+ Новая Фракция', selectHint: '← Выберите или создайте фракцию',
+    name: 'Имя', color: 'Цвет', tech: 'Технологии', culture: 'Культура', politics: 'Политика', religion: 'Религия',
+    startSim: '▶ Старт', stopSim: '⏸ Стоп', round: 'Раунд', speed: 'Скорость',
+    undo: '↩ Отменить', brushInfo: 'Выберите фракцию и рисуйте на карте', brushActive: 'Рисование',
+    stabilityBalanced: '⚖️ Достигнут баланс', stabilityOne: ' объединил мир!',
+    noAdjacent: '⚠️ Фракции не смежны', noAdjacentStop: '⚠️ Фракции изолированы',
+    eroding: 'разрушает', annexed: 'аннексировал', cells: 'клеток', placeholderName: 'Имя',
+  },
+  pt: {
+    title: 'Simulador Territorial', header1: 'Território', header2: 'Sim',
+    regions: 'Facções', newRegion: '+ Nova Facção', selectHint: '← Selecione ou crie uma facção',
+    name: 'Nome', color: 'Cor', tech: 'Tecnologia', culture: 'Cultura', politics: 'Política', religion: 'Religião',
+    startSim: '▶ Iniciar', stopSim: '⏸ Parar', round: 'Rodada', speed: 'Velocidade',
+    undo: '↩ Desfazer', brushInfo: 'Selecione uma facção e pinte no mapa', brushActive: 'Pintando',
+    stabilityBalanced: '⚖️ Equilíbrio alcançado', stabilityOne: ' unificou o mundo!',
+    noAdjacent: '⚠️ Facções não adjacentes', noAdjacentStop: '⚠️ Facções isoladas',
+    eroding: 'erodindo', annexed: 'anexou', cells: 'células', placeholderName: 'Nome',
+  },
+};
+let lang = 'en';
+function t(key) { return I18N[lang]?.[key] || I18N['en'][key] || key; }
+function setLang(l) { lang = l; refreshAllUI(); render(); }
+
+// ==================== WORLD MAP DATA ====================
+// Detailed continent outlines (canvas coords 880x480), each as [x,y][] polygon
+const CONTINENTS = [
+  // === NORTH AMERICA (high-detail) ===
+  { name:'North America', path:[
+    [18,62],[22,58],[26,54],[32,50],[38,46],[46,42],[54,38],[62,34],
+    [72,30],[82,26],[92,24],[104,22],[116,20],[128,18],[140,18],[152,18],
+    [164,20],[174,22],[184,24],[194,28],[204,32],[214,36],[224,40],[232,44],
+    [240,48],[248,54],[254,60],[260,66],[264,72],[268,78],[272,84],[274,90],
+    [276,96],[278,102],[278,108],[276,114],[274,120],[270,126],[266,132],
+    [260,136],[254,140],[248,144],[240,148],[234,150],[226,153],[218,156],
+    [210,158],[202,160],[196,162],[188,164],[182,166],[176,168],[170,170],
+    [166,172],[162,174],[158,178],[154,182],[150,186],[148,190],[146,194],
+    [142,196],[138,198],[134,198],[130,196],[126,194],[122,190],[118,186],
+    [114,180],[110,174],[106,168],[102,160],[98,152],[94,144],[90,136],
+    [86,128],[82,120],[78,112],[74,104],[70,96],[66,88],[62,80],[58,72],
+    [54,64],[50,58],[46,54],[40,52],[34,54],[28,56],[22,60],[18,62]
+  ]},
+  // Greenland
+  { name:'Greenland', path:[
+    [282,14],[295,10],[310,12],[322,18],[328,28],[330,40],[326,52],
+    [318,58],[306,60],[294,56],[285,48],[280,36],[278,24],[282,14]
+  ]},
+  // === CENTRAL AMERICA ===
+  { name:'Central America', path:[
+    [138,196],[143,198],[148,200],[152,204],[155,210],[156,218],[154,226],
+    [150,232],[144,236],[137,238],[130,240]
+  ]},
+  // Caribbean islands
+  { name:'Caribbean', path:[
+    [162,195],[168,192],[175,194],[180,198],[176,202],[168,200],[162,195]
+  ]},
+  { name:'Cuba', path:[
+    [148,180],[158,176],[170,178],[178,182],[172,186],[158,186],[148,180]
+  ]},
+
+  // === SOUTH AMERICA (high-detail) ===
+  { name:'South America', path:[
+    [130,240],[134,238],[138,236],[142,234],[146,232],[150,228],[153,224],
+    [156,220],[156,216],[155,212],[154,208],[152,204],[150,200],[148,198],
+    [152,196],[156,196],[162,198],[168,200],[174,202],[180,206],[184,210],
+    [188,216],[192,222],[194,228],[196,234],[198,242],[199,250],[200,258],
+    [200,266],[199,274],[198,282],[196,290],[194,298],[190,306],[186,312],
+    [180,318],[174,322],[168,326],[162,328],[156,328],[150,326],[146,322],
+    [142,318],[138,312],[134,306],[132,300],[130,294],[128,286],[127,278],
+    [126,270],[126,262],[126,254],[127,248],[128,244],[130,240]
+  ]},
+
+  // === EUROPE (high-detail) ===
+  { name:'Europe', path:[
+    [350,58],[354,52],[358,46],[364,42],[370,38],[376,36],[384,34],
+    [390,32],[398,30],[406,30],[414,30],[422,30],[430,32],[436,34],
+    [442,36],[448,40],[454,44],[458,48],[462,52],[464,56],[465,60],
+    [464,64],[462,68],[460,72],[456,76],[452,80],[448,82],[442,84],
+    [436,86],[430,88],[424,90],[418,92],[412,93],[406,94],[400,95],
+    [394,96],[388,97],[384,98],[380,97],[376,96],[372,94],[368,92],
+    [364,88],[360,82],[356,74],[353,68],[350,62],[350,58]
+  ]},
+  // British Isles
+  { name:'British Isles', path:[
+    [356,38],[364,34],[372,36],[376,42],[374,50],[368,54],[358,52],[354,46],[356,38]
+  ]},
+  // Scandinavia
+  { name:'Scandinavia', path:[
+    [424,22],[432,16],[442,14],[450,18],[456,24],[460,32],[462,40],
+    [460,48],[454,52],[446,50],[438,44],[432,36],[426,28],[424,22]
+  ]},
+  // Iberia
+  { name:'Iberia', path:[
+    [362,88],[355,84],[350,88],[348,94],[352,100],[360,102],[366,100],[368,94],[362,88]
+  ]},
+  // Italy
+  { name:'Italy', path:[
+    [440,84],[444,86],[446,92],[444,98],[440,102],[436,100],[434,94],[436,88],[440,84]
+  ]},
+  // Balkans / Greece
+  { name:'Balkans', path:[
+    [462,82],[466,78],[472,80],[476,86],[478,94],[474,100],[468,100],[462,96],[458,90],[462,82]
+  ]},
+
+  // === AFRICA (high-detail) ===
+  { name:'Africa', path:[
+    [380,100],[384,99],[388,98],[392,97],[396,96],[400,95],[404,94],
+    [408,93],[414,92],[420,91],[426,90],[432,89],[436,88],[440,87],
+    [444,87],[448,88],[452,90],[456,94],[460,100],[464,108],[466,116],
+    [468,126],[470,136],[472,146],[472,156],[472,166],[472,176],[470,186],
+    [468,196],[466,206],[462,216],[458,226],[452,236],[446,246],[438,254],
+    [430,262],[422,268],[414,274],[406,278],[398,280],[390,280],[384,278],
+    [380,274],[376,268],[374,260],[372,252],[372,244],[370,236],[370,228],
+    [370,220],[370,212],[372,204],[374,196],[376,188],[376,180],[376,172],
+    [378,164],[378,156],[380,148],[380,140],[380,132],[380,124],[380,116],
+    [380,108],[380,100]
+  ]},
+  // Madagascar
+  { name:'Madagascar', path:[
+    [474,236],[480,230],[486,232],[490,240],[488,252],[482,260],[474,258],[470,248],[474,236]
+  ]},
+
+  // === ASIA (high-detail) ===
+  { name:'Asia', path:[
+    [462,22],[468,18],[476,14],[486,12],[496,10],[508,8],[520,8],
+    [532,8],[544,8],[556,9],[568,10],[580,12],[592,13],[604,14],
+    [616,14],[628,13],[640,12],[652,10],[664,10],[676,11],[688,12],
+    [698,14],[708,17],[718,20],[728,24],[738,30],[746,36],[754,42],
+    [760,48],[764,54],[768,60],[772,66],[776,72],[778,78],[780,84],
+    [782,90],[784,96],[786,102],[786,108],[786,114],[784,120],[782,126],
+    [778,132],[774,136],[768,140],[762,144],[754,148],[746,152],[738,154],
+    [730,156],[722,157],[714,158],[706,158],[698,158],[690,157],[682,156],
+    [674,154],[666,152],[658,150],[650,148],[640,147],[630,146],[620,145],
+    [610,145],[600,145],[590,145],[582,146],[574,146],[566,147],[558,148],
+    [550,148],[542,148],[534,147],[526,146],[518,144],[510,140],[502,136],
+    [494,130],[488,124],[484,118],[480,112],[476,104],[474,96],[472,88],
+    [470,80],[468,72],[466,64],[464,54],[463,44],[462,34],[462,24],[462,22]
+  ]},
+  // India subcontinent
+  { name:'India', path:[
+    [542,148],[548,146],[556,148],[562,152],[566,158],[568,166],[566,174],
+    [560,180],[552,184],[544,182],[538,176],[534,168],[534,160],[536,154],[542,148]
+  ]},
+  // Arabian Peninsula
+  { name:'Arabia', path:[
+    [472,100],[478,96],[484,98],[490,104],[494,112],[496,122],[494,132],
+    [488,140],[480,142],[472,138],[466,130],[464,118],[466,108],[472,100]
+  ]},
+  // Southeast Asia
+  { name:'Southeast Asia', path:[
+    [718,158],[724,154],[732,156],[740,160],[746,166],[750,174],
+    [752,182],[748,188],[740,190],[732,188],[726,182],[720,174],[716,166],[718,158]
+  ]},
+  // Japan
+  { name:'Japan', path:[
+    [764,92],[770,98],[774,108],[776,118],[774,128],[770,138],[764,146],
+    [756,150],[750,146],[746,136],[744,124],[746,112],[750,102],[756,94],[764,92]
+  ]},
+  // Korean Peninsula
+  { name:'Korea', path:[
+    [748,134],[752,132],[756,136],[758,142],[756,148],[752,150],[746,146],[744,140],[748,134]
+  ]},
+  // Indonesia / Philippines
+  { name:'Indonesia', path:[
+    [740,190],[748,188],[752,184],[755,180],[760,178],[766,180],[770,184],
+    [768,188],[762,192],[754,194],[748,196],[742,194],[740,190]
+  ]},
+  { name:'Philippines', path:[
+    [754,162],[758,158],[762,160],[764,166],[760,172],[754,172],[750,168],[754,162]
+  ]},
+  { name:'Sri Lanka', path:[
+    [530,194],[534,190],[538,192],[538,198],[534,202],[528,200],[526,196],[530,194]
+  ]},
+
+  // === OCEANIA (high-detail) ===
+  { name:'Australia', path:[
+    [694,248],[700,242],[708,238],[716,236],[724,235],[732,236],[740,238],
+    [748,240],[754,244],[760,248],[764,254],[766,260],[767,266],[766,274],
+    [764,280],[762,288],[758,296],[752,304],[746,310],[738,314],[730,317],
+    [722,318],[714,319],[706,318],[698,316],[692,312],[686,306],[682,300],
+    [680,294],[678,286],[678,278],[680,272],[682,264],[686,256],[694,248]
+  ]},
+  // Papua New Guinea
+  { name:'Papua New Guinea', path:[
+    [754,218],[760,214],[768,216],[774,222],[772,232],[764,236],[756,232],[752,224],[754,218]
+  ]},
+  // New Zealand
+  { name:'New Zealand', path:[
+    [790,304],[796,300],[802,302],[806,310],[804,320],[798,326],[790,324],[786,316],[790,304]
+  ]},
+
+  // === Antarctica ===
+  { name:'Antarctica', path:[
+    [60,380],[140,376],[220,374],[300,374],[380,376],[460,378],[540,378],
+    [620,376],[700,374],[780,376],[840,378],[840,400],[60,400],[60,380]
+  ]},
+];
+
+// ==================== STATE ====================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CANVAS_W;
+canvas.height = CANVAS_H;
+
+// Offscreen canvas for world map outline
+const mapCanvas = document.createElement('canvas');
+mapCanvas.width = CANVAS_W;
+mapCanvas.height = CANVAS_H;
+const mapCtx = mapCanvas.getContext('2d');
+
+// Pixel ownership grid: 0=ocean, 1..N=region ID
+let grid = new Uint8Array(GRID_W * GRID_H);
+
+// Regions
+let regions = [];
+let nextRegionId = 1;
+let selectedRegionId = null;
+let activePaintId = null;
+
+// Stroke history for undo
+let currentStroke = [];    // cells changed in current brush drag: [{gx, gy, oldVal}]
+let strokeHistory = [];    // completed strokes
+const MAX_UNDO = 50;
+
+// Simulation state
+let isSimulating = false;
+let idleRounds = 0; // rounds without conquest
+let simTimer = null;
+let round = 0;
+let simSpeed = 1;
+
+// Painting state
+let isPainting = false;
+let eraserMode = false;
+let toolMode = 'brush'; // 'brush' | 'line' | 'rect' | 'fill'
+let lineStart = null;   // [gx, gy] for line/rect tools
+
+// Land mask disabled — paint anywhere
+let landMask = null;
+
+// Brush toolbar — mode buttons
+function setToolMode(mode) {
+  toolMode = mode; eraserMode = false; lineStart = null;
+  ['mode-brush','mode-line','mode-rect','mode-fill'].forEach(id => {
+    document.getElementById(id).classList.remove('active');
+  });
+  document.getElementById('mode-'+mode).classList.add('active');
+  document.getElementById('brush-eraser').classList.remove('active');
+  canvas.style.cursor = 'crosshair';
+}
+document.getElementById('mode-brush').addEventListener('click', () => setToolMode('brush'));
+document.getElementById('mode-line').addEventListener('click', () => setToolMode('line'));
+document.getElementById('mode-rect').addEventListener('click', () => setToolMode('rect'));
+document.getElementById('mode-fill').addEventListener('click', () => setToolMode('fill'));
+
+// Brush size buttons
+document.querySelectorAll('#brush-toolbar .tb-btn[data-size]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#brush-toolbar .tb-btn[data-size]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    BRUSH_RADIUS = parseInt(btn.dataset.size);
+  });
+});
+
+// Eraser
+document.getElementById('brush-eraser').addEventListener('click', function() {
+  eraserMode = !eraserMode;
+  lineStart = null;
+  setToolMode('brush');
+  this.classList.toggle('active', eraserMode);
+  canvas.style.cursor = eraserMode ? 'cell' : 'crosshair';
+});
+
+// ==================== HELPERS ====================
+function gridIdx(x, y) { return y * GRID_W + x; }
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}
+
+function getRegion(id) { return regions.find(r => r.id === id); }
+
+// ==================== WORLD MAP RENDERING ====================
+let useCustomMap = false;
+
+function drawWorldMap() {
+  mapCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  if (bgImage) {
+    // Use uploaded image as base map
+    useCustomMap = true;
+    // Draw image scaled to fit canvas
+    const iw = bgImage.width, ih = bgImage.height;
+    const scale = Math.max(CANVAS_W / iw, CANVAS_H / ih);
+    const sw = iw * scale, sh = ih * scale;
+    const sx = (CANVAS_W - sw) / 2, sy = (CANVAS_H - sh) / 2;
+    mapCtx.drawImage(bgImage, sx, sy, sw, sh);
+    return;
+  }
+
+  useCustomMap = false;
+
+  // Deep ocean gradient
+  const oceanGrad = mapCtx.createRadialGradient(CANVAS_W*0.5, CANVAS_H*0.5, 50, CANVAS_W*0.5, CANVAS_H*0.5, 600);
+  oceanGrad.addColorStop(0, '#0a0f24');
+  oceanGrad.addColorStop(0.5, '#080c1e');
+  oceanGrad.addColorStop(1, '#060818');
+  mapCtx.fillStyle = oceanGrad;
+  mapCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Subtle latitude lines
+  mapCtx.strokeStyle = 'rgba(255,255,255,0.025)';
+  mapCtx.lineWidth = 0.5;
+  for (let y = 0; y < CANVAS_H; y += 40) {
+    mapCtx.beginPath();
+    mapCtx.moveTo(0, y); mapCtx.lineTo(CANVAS_W, y);
+    mapCtx.stroke();
+  }
+  for (let x = 0; x < CANVAS_W; x += 60) {
+    mapCtx.beginPath();
+    mapCtx.moveTo(x, 0); mapCtx.lineTo(x, CANVAS_H);
+    mapCtx.stroke();
+  }
+
+  // Draw each continent with smooth bezier curves
+  CONTINENTS.forEach(cont => {
+    if (cont.path.length < 3) return;
+    const pts = cont.path;
+
+    // Smooth curve using quadratic bezier between consecutive points
+    mapCtx.beginPath();
+    mapCtx.moveTo(pts[0][0], pts[0][1]);
+
+    for (let i = 1; i < pts.length - 1; i++) {
+      const xc = (pts[i][0] + pts[i+1][0]) / 2;
+      const yc = (pts[i][1] + pts[i+1][1]) / 2;
+      mapCtx.quadraticCurveTo(pts[i][0], pts[i][1], xc, yc);
+    }
+    // Close the loop smoothly
+    const xcLast = (pts[pts.length-1][0] + pts[0][0]) / 2;
+    const ycLast = (pts[pts.length-1][1] + pts[0][1]) / 2;
+    mapCtx.quadraticCurveTo(pts[pts.length-1][0], pts[pts.length-1][1], xcLast, ycLast);
+    mapCtx.closePath();
+
+    // Land fill
+    const landGrad = mapCtx.createLinearGradient(0, 0, 0, CANVAS_H);
+    landGrad.addColorStop(0, '#1c2818');
+    landGrad.addColorStop(0.3, '#1a2416');
+    landGrad.addColorStop(0.6, '#182216');
+    landGrad.addColorStop(1, '#161e18');
+    mapCtx.fillStyle = landGrad;
+    mapCtx.fill();
+
+    // Coastline
+    mapCtx.strokeStyle = 'rgba(140,200,150,0.18)';
+    mapCtx.lineWidth = 0.8;
+    mapCtx.stroke();
+  });
+
+  // Fine grid overlay
+  mapCtx.strokeStyle = 'rgba(255,255,255,0.02)';
+  mapCtx.lineWidth = 0.5;
+  for (let x = 0; x <= CANVAS_W; x += GRID_SCALE) {
+    mapCtx.beginPath();
+    mapCtx.moveTo(x, 0); mapCtx.lineTo(x, CANVAS_H);
+    mapCtx.stroke();
+  }
+  for (let y = 0; y <= CANVAS_H; y += GRID_SCALE) {
+    mapCtx.beginPath();
+    mapCtx.moveTo(0, y); mapCtx.lineTo(CANVAS_W, y);
+    mapCtx.stroke();
+  }
+}
+
+// ==================== MAIN RENDER ====================
+function render() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // 1. Draw background: uploaded image > procedural map
+  if (bgImage) {
+    const iw = bgImage.width, ih = bgImage.height;
+    const scale = Math.max(CANVAS_W / iw, CANVAS_H / ih);
+    const sw = iw * scale, sh = ih * scale;
+    const sx = (CANVAS_W - sw) / 2, sy = (CANVAS_H - sh) / 2;
+    ctx.drawImage(bgImage, sx, sy, sw, sh);
+  } else {
+    ctx.drawImage(mapCanvas, 0, 0);
+  }
+
+  // 2. Draw region overlay — use fillRect so background shows through
+  ctx.globalAlpha = 0.55;
+  for (let gy = 0; gy < GRID_H; gy++) {
+    for (let gx = 0; gx < GRID_W; gx++) {
+      const rid = grid[gridIdx(gx, gy)];
+      if (rid === OCEAN_ID) continue;
+      const region = getRegion(rid);
+      if (!region) continue;
+      ctx.fillStyle = region.color;
+      ctx.fillRect(gx * GRID_SCALE, gy * GRID_SCALE, GRID_SCALE, GRID_SCALE);
+    }
+  }
+  ctx.globalAlpha = 1.0;
+
+  // 3. Continent outlines — only for procedural map
+  if (!bgImage) {
+    CONTINENTS.forEach(cont => {
+      ctx.beginPath();
+      ctx.moveTo(cont.path[0][0], cont.path[0][1]);
+      for (let i = 1; i < cont.path.length; i++) {
+        ctx.lineTo(cont.path[i][0], cont.path[i][1]);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    });
+  }
+
+  // 4. Region labels (centroids)
+  if (!isSimulating || round === 0) {
+    regions.forEach(region => {
+      const [cx, cy] = getRegionCentroid(region.id);
+      if (cx === -1) return;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(cx - region.name.length * 4 - 4, cy - 9, region.name.length * 8 + 8, 20);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(region.name, cx, cy + 5);
+    });
+  }
+
+  // 5. Selected region highlight
+  if (selectedRegionId && !isSimulating) {
+    drawRegionBorder(selectedRegionId, '#fff');
+  }
+
+  // 6. Line/Rect tool start marker
+  if (lineStart && (toolMode === 'line' || toolMode === 'rect')) {
+    const [lx, ly] = lineStart;
+    ctx.strokeStyle = '#ff0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(lx * GRID_SCALE - 1, ly * GRID_SCALE - 1, GRID_SCALE + 2, GRID_SCALE + 2);
+    ctx.fillStyle = 'rgba(255,255,0,0.3)';
+    ctx.fillRect(lx * GRID_SCALE, ly * GRID_SCALE, GRID_SCALE, GRID_SCALE);
+  }
+}
+
+function getRegionCentroid(rid) {
+  let sumX = 0, sumY = 0, count = 0;
+  for (let gy = 0; gy < GRID_H; gy++) {
+    for (let gx = 0; gx < GRID_W; gx++) {
+      if (grid[gridIdx(gx, gy)] === rid) {
+        sumX += gx * GRID_SCALE + GRID_SCALE / 2;
+        sumY += gy * GRID_SCALE + GRID_SCALE / 2;
+        count++;
+      }
+    }
+  }
+  if (count === 0) return [-1, -1];
+  return [Math.round(sumX / count), Math.round(sumY / count)];
+}
+
+function drawRegionBorder(rid, color) {
+  const drawn = new Set();
+  for (let gy = 0; gy < GRID_H; gy++) {
+    for (let gx = 0; gx < GRID_W; gx++) {
+      if (grid[gridIdx(gx, gy)] !== rid) continue;
+      // Check 4 neighbors
+      const neighbors = [
+        [gx-1, gy], [gx+1, gy], [gx, gy-1], [gx, gy+1]
+      ];
+      neighbors.forEach(([nx, ny]) => {
+        if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) return;
+        if (grid[gridIdx(nx, ny)] !== rid) {
+          const key = `${gx},${gy}`;
+          if (!drawn.has(key)) {
+            drawn.add(key);
+            ctx.fillStyle = color;
+            ctx.fillRect(gx * GRID_SCALE, gy * GRID_SCALE, GRID_SCALE, GRID_SCALE);
+          }
+        }
+      });
+    }
+  }
+}
+
+// ==================== REGION MANAGEMENT ====================
+
+function randStat() { return 30 + Math.floor(Math.random() * 41); } // 30-70
+
+function createRegion(name, color) {
+  const id = nextRegionId++;
+  regions.push({
+    id, name, color,
+    tech: randStat(), culture: randStat(), politics: randStat(), religion: randStat()
+  });
+  activePaintId = id;
+  selectedRegionId = id;
+  refreshUI();
+  updateSimButton();
+  return id;
+}
+
+function deleteRegion(id) {
+  if (isSimulating) return;
+  // Clear grid cells
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] === id) grid[i] = OCEAN_ID;
+  }
+  regions = regions.filter(r => r.id !== id);
+  if (selectedRegionId === id) selectedRegionId = regions.length > 0 ? regions[0].id : null;
+  if (activePaintId === id) activePaintId = regions.length > 0 ? regions[0].id : null;
+  refreshUI();
+  updateSimButton();
+  render();
+}
+
+function updateSimButton() {
+  const btn = document.getElementById('btn-sim');
+  if (regions.length < 2) {
+    btn.disabled = true;
+  } else {
+    btn.disabled = false;
+  }
+}
+
+// ==================== UI ====================
+function refreshAllUI() {
+  // Update all static text
+  document.title = t('title');
+  document.getElementById('hdr1').textContent = t('header1');
+  document.getElementById('hdr2').textContent = t('header2');
+  document.querySelector('#region-section .section-title').textContent = '📋 ' + t('regions');
+  document.getElementById('btn-new-region').textContent = t('newRegion');
+  document.getElementById('no-region-hint').textContent = t('selectHint');
+  document.getElementById('btn-undo').textContent = t('undo');
+  document.querySelector('#speed-control label').textContent = t('speed');
+  document.querySelector('#sim-info span:first-child').innerHTML = t('round') + ': <b id="round-display">' + round + '</b>';
+  // Update prop labels
+  document.querySelector('label[for="prop-name"]')?.childNodes && (
+    document.querySelector('#prop-section .prop-row:nth-child(1) label').childNodes[0].textContent = t('name')
+  );
+  document.querySelector('#prop-section .prop-row:nth-child(2) label').childNodes[0].textContent = t('color');
+  document.querySelector('#prop-section .prop-row:nth-child(3) label').childNodes[0].textContent = '🔬 ' + t('tech') + ' ';
+  document.querySelector('#prop-section .prop-row:nth-child(4) label').childNodes[0].textContent = '🎭 ' + t('culture') + ' ';
+  document.querySelector('#prop-section .prop-row:nth-child(5) label').childNodes[0].textContent = '⚖️ ' + t('politics') + ' ';
+  document.querySelector('#prop-section .prop-row:nth-child(6) label').childNodes[0].textContent = '🕯️ ' + t('religion') + ' ';
+  document.getElementById('prop-name').placeholder = t('placeholderName');
+  // Lang select
+  const sel = document.getElementById('lang-select');
+  if (sel) sel.value = lang;
+  // Sim button
+  const btn = document.getElementById('btn-sim');
+  if (!isSimulating) {
+    btn.textContent = t('startSim');
+  } else {
+    btn.textContent = t('stopSim');
+  }
+  // Brush info
+  updateBrushInfo();
+  refreshUI();
+}
+
+function updateBrushInfo() {
+  const brushInfo = document.getElementById('brush-info');
+  if (activePaintId) {
+    const r = getRegion(activePaintId);
+    brushInfo.innerHTML = '🖌️ ' + t('brushActive') + ': <span class="active" style="color:' + (r ? r.color : '#7c8cf8') + '">' + (r ? r.name : '?') + '</span> — ' + (lang === 'zh' ? '在画布上拖动鼠标' : 'drag on the map');
+  } else {
+    brushInfo.innerHTML = '🖌️ ' + t('brushInfo');
+  }
+}
+
+function refreshUI() {
+  const list = document.getElementById('region-list');
+  const props = document.getElementById('region-props');
+  const hint = document.getElementById('no-region-hint');
+
+  list.innerHTML = '';
+  regions.forEach(r => {
+    const chip = document.createElement('div');
+    chip.className = 'region-chip' + (r.id === selectedRegionId ? ' selected' : '');
+    chip.innerHTML = `
+      <span class="dot" style="background:${r.color}"></span>
+      <span class="name">${r.name}</span>
+      <span class="del" data-id="${r.id}">✕</span>
+    `;
+    chip.addEventListener('click', (e) => {
+      if (e.target.classList.contains('del')) {
+        e.stopPropagation();
+        deleteRegion(r.id);
+        return;
+      }
+      selectRegion(r.id);
+    });
+    list.appendChild(chip);
+  });
+
+  if (selectedRegionId) {
+    props.classList.add('active');
+    hint.style.display = 'none';
+    const r = getRegion(selectedRegionId);
+    if (r) {
+      document.getElementById('prop-name').value = r.name;
+      document.getElementById('prop-color').value = r.color;
+      document.getElementById('prop-tech').value = r.tech;
+      document.getElementById('prop-culture').value = r.culture;
+      document.getElementById('prop-politics').value = r.politics;
+      document.getElementById('prop-religion').value = r.religion;
+      document.getElementById('val-tech').textContent = r.tech;
+      document.getElementById('val-culture').textContent = r.culture;
+      document.getElementById('val-pol').textContent = r.politics;
+      document.getElementById('val-rel').textContent = r.religion;
+    }
+  } else {
+    props.classList.remove('active');
+    hint.style.display = 'block';
+  }
+
+  // Brush info updated by updateBrushInfo() called from refreshAllUI
+}
+
+function selectRegion(id) {
+  selectedRegionId = id;
+  activePaintId = id;
+  refreshUI();
+  render();
+}
+
+// ==================== CANVAS INTERACTION ====================
+function canvasToGrid(cx, cy) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = CANVAS_W / rect.width;
+  const scaleY = CANVAS_H / rect.height;
+  const px = (cx - rect.left) * scaleX;
+  const py = (cy - rect.top) * scaleY;
+  return [Math.floor(px / GRID_SCALE), Math.floor(py / GRID_SCALE)];
+}
+
+function paintBrush(gx, gy) {
+  if (isSimulating) return;
+  const paintId = eraserMode ? OCEAN_ID : activePaintId;
+  if (!eraserMode && !activePaintId) return;
+  if (!eraserMode && !getRegion(activePaintId)) return;
+
+  const r2 = BRUSH_RADIUS * BRUSH_RADIUS;
+  for (let dy = -BRUSH_RADIUS; dy <= BRUSH_RADIUS; dy++) {
+    for (let dx = -BRUSH_RADIUS; dx <= BRUSH_RADIUS; dx++) {
+      if (dx * dx + dy * dy > r2) continue;
+      const nx = gx + dx;
+      const ny = gy + dy;
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      const idx = gridIdx(nx, ny);
+      const oldVal = grid[idx];
+      if (oldVal === paintId) continue; // already set, skip
+      // Don't overwrite another faction's territory (eraser can clear anything)
+      if (!eraserMode && oldVal !== OCEAN_ID && oldVal !== paintId) continue;
+      grid[idx] = paintId;
+      // Record for undo — deduplicate by grid position within current stroke
+      const exist = currentStroke.find(s => s.gx === nx && s.gy === ny);
+      if (exist) {
+        // Already recorded earlier in this stroke; keep original oldVal
+      } else {
+        currentStroke.push({ gx: nx, gy: ny, oldVal });
+      }
+    }
+  }
+}
+
+function finishStroke() {
+  if (currentStroke.length === 0) return;
+  strokeHistory.push(currentStroke);
+  if (strokeHistory.length > MAX_UNDO) strokeHistory.shift();
+  currentStroke = [];
+  document.getElementById('btn-undo').disabled = false;
+}
+
+// Bresenham line algorithm
+function paintLine(x0, y0, x1, y1) {
+  const paintId = eraserMode ? OCEAN_ID : activePaintId;
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  const stroke = [];
+
+  while (true) {
+    if (x0 >= 0 && x0 < GRID_W && y0 >= 0 && y0 < GRID_H) {
+      const idx = gridIdx(x0, y0);
+      const oldVal = grid[idx];
+      // Don't overwrite another faction's territory
+      if (!eraserMode && oldVal !== OCEAN_ID && oldVal !== paintId) { /* skip */ }
+      else if (oldVal !== paintId) {
+        stroke.push({ gx: x0, gy: y0, oldVal });
+        grid[idx] = paintId;
+      }
+    }
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+
+  if (stroke.length > 0) {
+    strokeHistory.push(stroke);
+    if (strokeHistory.length > MAX_UNDO) strokeHistory.shift();
+    document.getElementById('btn-undo').disabled = false;
+  }
+}
+
+// Flood fill: fill contiguous area of same color
+function floodFill(gx, gy) {
+  if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H) return;
+  const paintId = eraserMode ? OCEAN_ID : activePaintId;
+  const targetId = grid[gridIdx(gx, gy)];
+  if (targetId === paintId) return;
+  // Don't overwrite another faction (unless erasing)
+  if (!eraserMode && targetId !== OCEAN_ID && targetId !== paintId) return;
+
+  const stack = [[gx, gy]];
+  const stroke = [];
+  const visited = new Uint8Array(GRID_W * GRID_H);
+
+  while (stack.length > 0) {
+    const [cx, cy] = stack.pop();
+    if (cx < 0 || cx >= GRID_W || cy < 0 || cy >= GRID_H) continue;
+    const idx = gridIdx(cx, cy);
+    if (visited[idx]) continue;
+    if (grid[idx] !== targetId) continue;
+    visited[idx] = 1;
+    stroke.push({ gx: cx, gy: cy, oldVal: targetId });
+    grid[idx] = paintId;
+    stack.push([cx-1, cy], [cx+1, cy], [cx, cy-1], [cx, cy+1]);
+  }
+
+  if (stroke.length > 0) {
+    strokeHistory.push(stroke);
+    if (strokeHistory.length > MAX_UNDO) strokeHistory.shift();
+    document.getElementById('btn-undo').disabled = false;
+  }
+}
+
+// Rectangle fill
+function paintRect(x0, y0, x1, y1) {
+  const paintId = eraserMode ? OCEAN_ID : activePaintId;
+  const xMin = Math.max(0, Math.min(x0, x1));
+  const xMax = Math.min(GRID_W - 1, Math.max(x0, x1));
+  const yMin = Math.max(0, Math.min(y0, y1));
+  const yMax = Math.min(GRID_H - 1, Math.max(y0, y1));
+  const stroke = [];
+
+  for (let y = yMin; y <= yMax; y++) {
+    for (let x = xMin; x <= xMax; x++) {
+      const idx = gridIdx(x, y);
+      const oldVal = grid[idx];
+      if (oldVal === paintId) continue;
+      if (!eraserMode && oldVal !== OCEAN_ID && oldVal !== paintId) continue;
+      stroke.push({ gx: x, gy: y, oldVal });
+      grid[idx] = paintId;
+    }
+  }
+
+  if (stroke.length > 0) {
+    strokeHistory.push(stroke);
+    if (strokeHistory.length > MAX_UNDO) strokeHistory.shift();
+    document.getElementById('btn-undo').disabled = false;
+  }
+}
+
+function undoStroke() {
+  if (isSimulating) return;
+  if (strokeHistory.length === 0) return;
+  const stroke = strokeHistory.pop();
+  for (const { gx, gy, oldVal } of stroke) {
+    grid[gridIdx(gx, gy)] = oldVal;
+  }
+  if (strokeHistory.length === 0) {
+    document.getElementById('btn-undo').disabled = true;
+  }
+  render();
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (isSimulating) return;
+  const [gx, gy] = canvasToGrid(e.clientX, e.clientY);
+
+  if (toolMode === 'fill') {
+    if (!activePaintId && !eraserMode) return;
+    floodFill(gx, gy);
+    render();
+    return;
+  }
+
+  if (toolMode === 'line' || toolMode === 'rect') {
+    if (!activePaintId && !eraserMode) return;
+    if (lineStart === null) {
+      lineStart = [gx, gy];
+      render();
+    } else {
+      if (toolMode === 'line') {
+        paintLine(lineStart[0], lineStart[1], gx, gy);
+      } else {
+        paintRect(lineStart[0], lineStart[1], gx, gy);
+      }
+      lineStart = null;
+      render();
+    }
+    return;
+  }
+
+  if (!activePaintId && !eraserMode) return;
+  isPainting = true;
+  paintBrush(gx, gy);
+  render();
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!isPainting) return;
+  const [gx, gy] = canvasToGrid(e.clientX, e.clientY);
+  paintBrush(gx, gy);
+  render();
+});
+
+canvas.addEventListener('mouseup', () => { isPainting = false; finishStroke(); });
+canvas.addEventListener('mouseleave', () => { isPainting = false; finishStroke(); });
+
+// Touch support
+canvas.addEventListener('touchstart', (e) => {
+  if (isSimulating) return;
+  if (!activePaintId) return;
+  e.preventDefault();
+  isPainting = true;
+  const [gx, gy] = canvasToGrid(e.touches[0].clientX, e.touches[0].clientY);
+  paintBrush(gx, gy);
+  render();
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!isPainting) return;
+  e.preventDefault();
+  const [gx, gy] = canvasToGrid(e.touches[0].clientX, e.touches[0].clientY);
+  paintBrush(gx, gy);
+  render();
+});
+
+canvas.addEventListener('touchend', () => { isPainting = false; finishStroke(); });
+
+// ==================== PROPERTY BINDINGS ====================
+document.getElementById('prop-name').addEventListener('input', (e) => {
+  const r = getRegion(selectedRegionId);
+  if (r) { r.name = e.target.value; refreshUI(); render(); }
+});
+document.getElementById('prop-color').addEventListener('input', (e) => {
+  const r = getRegion(selectedRegionId);
+  if (r) { r.color = e.target.value; refreshUI(); render(); }
+});
+['tech','culture','politics','religion'].forEach(field => {
+  document.getElementById(`prop-${field}`).addEventListener('input', (e) => {
+    const r = getRegion(selectedRegionId);
+    if (r) {
+      r[field] = parseInt(e.target.value);
+      document.getElementById(`val-${field}`).textContent = r[field];
+    }
+  });
+});
+
+document.getElementById('btn-new-region').addEventListener('click', () => {
+  if (regions.length >= MAX_REGIONS) { alert(lang === 'zh' ? '最多支持10个区域' : 'Maximum 10 factions'); return; }
+  const colors = getFactionColors();
+  const color = colors[regions.length % colors.length];
+  const prefix = lang === 'zh' ? '区域' : 'Faction ';
+  const defaultName = prefix + (regions.length + 1);
+  const name = prompt(lang === 'zh' ? '输入势力名称:' : 'Enter faction name:', defaultName);
+  if (!name || !name.trim()) return;
+  createRegion(name.trim(), color);
+  render();
+});
+
+// ==================== COMBAT ENGINE ====================
+function computePower(region, isAttack, noJitter) {
+  let base;
+  if (isAttack) {
+    base = region.tech * 0.45 + region.culture * 0.25 + region.politics * 0.10 + region.religion * 0.20;
+  } else {
+    // Defense is inherently weaker — attack naturally exceeds defense
+    base = (region.tech * 0.05 + region.culture * 0.25 + region.politics * 0.45 + region.religion * 0.15) * 0.75;
+  }
+  // ±10% random jitter on attack only (skip for stability checks)
+  if (!noJitter && isAttack) {
+    base *= (0.90 + Math.random() * 0.20);
+  }
+  return base;
+}
+
+function findAdjacentPairs() {
+  const pairs = new Map(); // key: "minId-maxId" -> {a: id, b: id}
+  const powerCache = new Map();
+
+  for (let gy = 0; gy < GRID_H; gy++) {
+    for (let gx = 0; gx < GRID_W; gx++) {
+      const here = grid[gridIdx(gx, gy)];
+      if (here === OCEAN_ID) continue;
+
+      // Check right and down neighbors
+      const neighbors = [[gx+1, gy], [gx, gy+1]];
+      neighbors.forEach(([nx, ny]) => {
+        if (nx >= GRID_W || ny >= GRID_H) return;
+        const there = grid[gridIdx(nx, ny)];
+        if (there === OCEAN_ID || there === here) return;
+
+        const minId = Math.min(here, there);
+        const maxId = Math.max(here, there);
+        const key = `${minId}-${maxId}`;
+        if (!pairs.has(key)) {
+          pairs.set(key, { a: minId, b: maxId, borderLen: 0 });
+        }
+        pairs.get(key).borderLen++;
+      });
+    }
+  }
+
+  return Array.from(pairs.values());
+}
+
+function simulateOneRound() {
+  const pairs = findAdjacentPairs();
+  if (pairs.length === 0) return { changed: false, conquests: [] };
+
+  // Evaluate all possible conquests, scored by power advantage
+  const candidates = [];
+  pairs.forEach(({ a, b }) => {
+    const regionA = getRegion(a);
+    const regionB = getRegion(b);
+    if (!regionA || !regionB) return;
+
+    const attackA = computePower(regionA, true);
+    const attackB = computePower(regionB, true);
+    const defenseA = computePower(regionA, false);
+    const defenseB = computePower(regionB, false);
+
+    // A conquers B?
+    if (attackA > defenseB) {
+      candidates.push({ winner: a, loser: b, advantage: attackA - defenseB });
+    }
+    // B conquers A?
+    if (attackB > defenseA) {
+      candidates.push({ winner: b, loser: a, advantage: attackB - defenseA });
+    }
+  });
+
+  if (candidates.length === 0) return { changed: false, conquests: [] };
+
+  // Sort by advantage descending — strongest conquest first
+  candidates.sort((a, b) => b.advantage - a.advantage);
+
+  const conquests = [];
+  const conquered = new Set();
+
+  for (const c of candidates) {
+    if (conquered.has(c.loser)) continue;  // this loser already being eaten by someone else
+    if (!getRegion(c.winner) || !getRegion(c.loser)) continue; // already gone
+    // Allow mutual erosion: winner can be a loser to a different stronger neighbor
+
+    conquests.push(c);
+    conquered.add(c.loser);
+  }
+
+  if (conquests.length === 0) return { changed: false, conquests: [] };
+
+  const eliminations = [];
+
+  // Apply gradual border erosion (NOT instant full annexation)
+  conquests.forEach(conq => {
+    const wid = conq.winner;
+    const lid = conq.loser;
+    const winner = getRegion(wid);
+    const loser = getRegion(lid);
+    if (!winner || !loser) return;
+
+    // Find border cells: loser cells adjacent to winner cells
+    const borderCells = [];
+    for (let gy = 0; gy < GRID_H; gy++) {
+      for (let gx = 0; gx < GRID_W; gx++) {
+        if (grid[gridIdx(gx, gy)] !== lid) continue;
+        // Check 4 neighbors for winner cells
+        const neighbors = [[gx-1,gy],[gx+1,gy],[gx,gy-1],[gx,gy+1]];
+        let touchesWinner = false;
+        for (const [nx, ny] of neighbors) {
+          if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+          if (grid[gridIdx(nx, ny)] === wid) { touchesWinner = true; break; }
+        }
+        if (touchesWinner) borderCells.push([gx, gy]);
+      }
+    }
+
+    if (borderCells.length === 0) return;
+
+    // --- REALISM MODIFIERS ---
+
+    // 1. Cultural resistance: high-culture regions resist erosion
+    // Reduces the percentage of border cells taken
+    const cultureResist = 1 - (loser.culture / 250); // 0.6 at culture=100, 1.0 at culture=0
+
+    // 2. Overextension penalty: large empires are easier to attack
+    // Count total land cells to determine if this region is overextended
+    let totalLand = 0;
+    let loserLand = 0;
+    for (let i = 0; i < grid.length; i++) {
+      if (grid[i] !== OCEAN_ID) {
+        totalLand++;
+        if (grid[i] === lid) loserLand++;
+      }
+    }
+    const overextendPenalty = loserLand > totalLand * 0.25
+      ? 1 + (loserLand / totalLand - 0.25) * 2  // up to 2.5x easier to attack
+      : 1;
+
+    // 3. Tech advantage: high-tech attackers erode faster
+    const techBonus = 0.8 + (winner.tech / 250); // 0.8-1.2x
+
+    // Combined erosion ratio
+    const ratio = Math.min(0.65, Math.max(0.10,
+      (conq.advantage / 80) * cultureResist * overextendPenalty * techBonus
+    ));
+    const takeCount = Math.max(1, Math.floor(borderCells.length * ratio));
+
+    // Score each border cell by how many winner neighbors it touches (8-dir)
+    // Cells with more winner contact get taken first → clean advancing front
+    borderCells.forEach(cell => {
+      const [cx, cy] = cell;
+      let contact = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = cx + dx, ny = cy + dy;
+          if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+          if (grid[gridIdx(nx, ny)] === wid) contact++;
+        }
+      }
+      cell.push(contact); // [gx, gy, contact]
+    });
+
+    // Sort by contact score descending — most-surrounded cells taken first
+    borderCells.sort((a, b) => b[2] - a[2]);
+
+    for (let i = 0; i < takeCount; i++) {
+      grid[gridIdx(borderCells[i][0], borderCells[i][1])] = wid;
+    }
+
+    // Small stat drain from loser, small boost to winner
+    const drain = 0.05; // 5% per round
+    winner.tech = Math.min(100, Math.round(winner.tech + loser.tech * drain));
+    winner.culture = Math.min(100, Math.round(winner.culture + loser.culture * drain));
+    winner.politics = Math.min(100, Math.round(winner.politics + loser.politics * drain));
+    winner.religion = Math.min(100, Math.round(winner.religion + loser.religion * drain));
+
+    conq.winnerName = winner.name;
+    conq.loserName = loser.name;
+    conq.cellsTaken = takeCount;
+
+    // Check if loser has any cells left
+    let loserCells = 0;
+    for (let i = 0; i < grid.length; i++) {
+      if (grid[i] === lid) loserCells++;
+    }
+    if (loserCells === 0) {
+      eliminations.push({ wid, lid, winnerName: winner.name, loserName: loser.name });
+      // Absorb remaining stats on elimination
+      winner.tech = Math.min(100, Math.round(winner.tech + loser.tech * 0.25));
+      winner.culture = Math.min(100, Math.round(winner.culture + loser.culture * 0.25));
+      winner.politics = Math.min(100, Math.round(winner.politics + loser.politics * 0.25));
+      winner.religion = Math.min(100, Math.round(winner.religion + loser.religion * 0.25));
+    }
+  });
+
+  // Remove fully conquered regions
+  eliminations.forEach(({ lid }) => {
+    regions = regions.filter(r => r.id !== lid);
+  });
+
+  // Update UI references
+  if (selectedRegionId && !getRegion(selectedRegionId)) {
+    selectedRegionId = regions.length > 0 ? regions[0].id : null;
+  }
+  if (activePaintId && !getRegion(activePaintId)) {
+    activePaintId = regions.length > 0 ? regions[0].id : null;
+  }
+
+  return { changed: true, conquests, eliminations };
+}
+
+function isStable() {
+  const pairs = findAdjacentPairs();
+  // No adjacent regions means regions are isolated — this is NOT stable, it's incomplete
+  if (pairs.length === 0) return false;
+
+  for (const { a, b } of pairs) {
+    const regionA = getRegion(a);
+    const regionB = getRegion(b);
+    if (!regionA || !regionB) continue;
+
+    const attackA = computePower(regionA, true, true);
+    const attackB = computePower(regionB, true, true);
+    const defenseA = computePower(regionA, false, true);
+    const defenseB = computePower(regionB, false, true);
+
+    // With asymmetric weights, attack almost always > defense for different regions
+    if (attackA > defenseB || attackB > defenseA) return false;
+  }
+  return true;
+}
+
+// ==================== SIMULATION LOOP ====================
+function getSimInterval() {
+  return Math.round(600 / simSpeed); // base 600ms at 1x
+}
+
+function runRound() {
+  if (!isSimulating) return;
+
+  const result = simulateOneRound();
+  round++;
+  document.getElementById('round-display').textContent = round;
+
+  // Natural growth: peaceful regions slowly develop
+  if (result.conquests.length === 0) {
+    const fightingIds = new Set();
+    const pairs = findAdjacentPairs();
+    pairs.forEach(({ a, b }) => {
+      const rA = getRegion(a), rB = getRegion(b);
+      if (!rA || !rB) return;
+      const attA = computePower(rA, true, true);
+      const attB = computePower(rB, true, true);
+      const defA = computePower(rA, false, true);
+      const defB = computePower(rB, false, true);
+      if (attA > defB || attB > defA) {
+        fightingIds.add(a); fightingIds.add(b);
+      }
+    });
+    // Peaceful regions gain +0.3 to a random stat
+    regions.forEach(r => {
+      if (fightingIds.has(r.id)) return;
+      const fields = ['tech','culture','politics','religion'];
+      const f = fields[Math.floor(Math.random() * 4)];
+      r[f] = Math.min(100, r[f] + 0.3);
+    });
+  }
+
+  if (result.conquests.length > 0) {
+    idleRounds = 0;
+    const parts = [];
+    // Show eliminations prominently
+    if (result.eliminations && result.eliminations.length > 0) {
+      parts.push(...result.eliminations.map(e => `💀 ${e.winnerName} ${t('annexed')} ${e.loserName}`));
+    }
+    // Show ongoing border erosion
+    const erosions = result.conquests.filter(c => !result.eliminations?.some(e => e.lid === c.loser));
+    if (erosions.length > 0) {
+      parts.push(...erosions.map(c => `⚔️ ${c.winnerName} → ${c.loserName} (${c.cellsTaken}${t('cells')})`));
+    }
+    document.getElementById('stability-msg').textContent = parts.join('  ·  ');
+  } else {
+    idleRounds++;
+    if (!result.changed) {
+      const pairs = findAdjacentPairs();
+      if (pairs.length === 0 && idleRounds === 1) {
+        document.getElementById('stability-msg').textContent = t('noAdjacent');
+      }
+    }
+  }
+
+  refreshUI();
+  render();
+
+  // Check termination
+  if (regions.length <= 1) {
+    stopSimulation();
+    document.getElementById('stability-msg').textContent = `🏆 ${regions[0]?.name || '?'}${t('stabilityOne')}`;
+  } else if (isStable() && findAdjacentPairs().length > 0) {
+    stopSimulation();
+    document.getElementById('stability-msg').textContent = t('stabilityBalanced');
+  } else if (idleRounds >= 5 && findAdjacentPairs().length === 0) {
+    // Give up after 5 rounds of nothing
+    stopSimulation();
+    document.getElementById('stability-msg').textContent = t('noAdjacentStop');
+  }
+}
+
+function startSimulation() {
+  if (regions.length < 2) return;
+  isSimulating = true;
+  round = 0;
+  // Clear undo history when simulation starts
+  strokeHistory = [];
+  currentStroke = [];
+  document.getElementById('btn-undo').disabled = true;
+  document.getElementById('round-display').textContent = '0';
+  document.getElementById('stability-msg').textContent = '';
+  const btn = document.getElementById('btn-sim');
+  btn.textContent = t('stopSim');
+  btn.className = 'stop';
+  canvas.classList.add('simulating');
+  activePaintId = null;
+  refreshUI();
+
+  scheduleNextRound();
+}
+
+function stopSimulation() {
+  isSimulating = false;
+  if (simTimer) { clearTimeout(simTimer); simTimer = null; }
+  const btn = document.getElementById('btn-sim');
+  btn.textContent = t('startSim');
+  btn.className = 'start';
+  canvas.classList.remove('simulating');
+  if (regions.length > 0 && !activePaintId) {
+    activePaintId = regions[0].id;
+    selectedRegionId = regions[0].id;
+  }
+  refreshUI();
+  render();
+}
+
+function scheduleNextRound() {
+  if (!isSimulating) return;
+  simTimer = setTimeout(() => {
+    runRound();
+    scheduleNextRound();
+  }, getSimInterval());
+}
+
+document.getElementById('btn-sim').addEventListener('click', () => {
+  if (isSimulating) {
+    stopSimulation();
+  } else {
+    startSimulation();
+  }
+});
+
+document.getElementById('speed-slider').addEventListener('input', (e) => {
+  simSpeed = parseFloat(e.target.value);
+  document.getElementById('speed-val').textContent = simSpeed + '×';
+  // Reset timer with new speed if simulating
+  if (isSimulating && simTimer) {
+    clearTimeout(simTimer);
+    scheduleNextRound();
+  }
+});
+
+// ==================== IMAGE UPLOAD ====================
+let bgImage = null;
+let smartColors = null; // auto-detected contrasting colors
+
+// Default faction colors (fallback)
+const DEFAULT_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#e91e63','#00bcd4','#ff5722'];
+
+function extractImageColors(img) {
+  // Sample image at reduced resolution to find dominant hues
+  const sampleW = Math.min(img.width, 80);
+  const sampleH = Math.min(img.height, 50);
+  const tmp = document.createElement('canvas');
+  tmp.width = sampleW; tmp.height = sampleH;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(img, 0, 0, sampleW, sampleH);
+
+  // Collect non-dark pixel hues (skip very dark = ocean/background)
+  const pixels = tctx.getImageData(0, 0, sampleW, sampleH).data;
+  const hueBuckets = new Array(36).fill(0); // 36 hue buckets (10° each)
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
+    const brightness = (r + g + b) / 3;
+    if (brightness < 30 || brightness > 240) continue; // skip too dark/light
+    const saturation = Math.max(r,g,b) - Math.min(r,g,b);
+    if (saturation < 15) continue; // skip gray
+
+    // Convert to hue (0-360)
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    let hue = 0;
+    if (max === min) continue;
+    if (max === r) hue = ((g - b) / (max - min)) * 60;
+    else if (max === g) hue = ((b - r) / (max - min)) * 60 + 120;
+    else hue = ((r - g) / (max - min)) * 60 + 240;
+    if (hue < 0) hue += 360;
+
+    const bucket = Math.floor(hue / 10);
+    hueBuckets[bucket]++;
+  }
+
+  // Find dominant hue buckets
+  const ranked = hueBuckets.map((count, i) => ({ count, hue: i * 10 + 5 }))
+    .sort((a, b) => b.count - a.count);
+
+  // Pick hues that are maximally distant from image's dominant hues
+  const dominantHues = ranked.slice(0, 5).filter(h => h.count > 0).map(h => h.hue);
+  const candidates = [];
+  for (let h = 0; h < 360; h += 18) {
+    let minDist = 360;
+    for (const dh of dominantHues) {
+      const dist = Math.min(Math.abs(h - dh), 360 - Math.abs(h - dh));
+      if (dist < minDist) minDist = dist;
+    }
+    if (minDist > 40 && candidates.length < 12) {
+      candidates.push({ hue: h, dist: minDist });
+    }
+  }
+  candidates.sort((a, b) => b.dist - a.dist);
+
+  // Convert top candidates to saturated colors
+  return candidates.slice(0, 10).map(c => {
+    const rgb = hslToRgb(c.hue / 360, 0.7, 0.55);
+    return '#' + rgb.map(v => v.toString(16).padStart(2,'0')).join('');
+  });
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function getFactionColors() {
+  return smartColors || DEFAULT_COLORS;
+}
+
+function loadImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      bgImage = img;
+      smartColors = extractImageColors(img);
+      const name = file.name.length > 15 ? file.name.slice(0,12)+'...' : file.name;
+      document.getElementById('btn-upload-map').classList.add('has-map');
+      document.getElementById('btn-upload-map').textContent = '🗺️ ' + name;
+      document.getElementById('btn-remove-map').style.display = 'inline-block';
+      render();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('btn-upload-map').addEventListener('click', () => {
+  document.getElementById('file-upload').click();
+});
+
+document.getElementById('file-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  loadImageFile(file);
+});
+
+// Remove custom map
+document.getElementById('btn-remove-map').addEventListener('click', () => {
+  bgImage = null;
+  smartColors = null;
+  document.getElementById('btn-upload-map').classList.remove('has-map');
+  document.getElementById('btn-upload-map').textContent = '🗺️ Upload Map';
+  document.getElementById('btn-remove-map').style.display = 'none';
+  drawWorldMap();
+  render();
+});
+
+// Drag & drop onto canvas
+canvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+canvas.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    loadImageFile(file);
+  }
+});
+
+document.getElementById('btn-undo').addEventListener('click', undoStroke);
+
+// ==================== KEYBOARD SHORTCUTS ====================
+document.addEventListener('keydown', (e) => {
+  // Ctrl+Z undo (works even during simulation for review, but undoStroke checks)
+  if (e.ctrlKey && e.key === 'z') {
+    e.preventDefault();
+    undoStroke();
+    return;
+  }
+  if (isSimulating) return;
+  // Number keys select regions
+  if (e.key >= '1' && e.key <= '9') {
+    const idx = parseInt(e.key) - 1;
+    if (idx < regions.length) {
+      selectRegion(regions[idx].id);
+    }
+  }
+  // Space to start/stop
+  if (e.key === ' ') {
+    e.preventDefault();
+    if (isSimulating) stopSimulation();
+    else if (regions.length >= 2) startSimulation();
+  }
+});
+
+// ==================== INITIALIZATION ====================
+function init() {
+  // Draw procedural map as fallback, then try to load custom image
+  drawWorldMap();
+  updateSimButton();
+  refreshAllUI();
+  render();
+
+  // Attempt to load default map image (overrides procedural map)
+  const defaultMap = new Image();
+  defaultMap.onload = () => {
+    bgImage = defaultMap;
+    smartColors = extractImageColors(defaultMap);
+    document.getElementById('btn-upload-map').classList.add('has-map');
+    document.getElementById('btn-upload-map').textContent = '🗺️ map.png';
+    document.getElementById('btn-remove-map').style.display = 'inline-block';
+    render();
+  };
+  defaultMap.onerror = () => {
+    // Map failed to load - show hint on canvas
+    mapCtx.fillStyle = '#0a0f24';
+    mapCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    mapCtx.fillStyle = '#5a5a8a';
+    mapCtx.font = '14px "PingFang SC","Microsoft YaHei",sans-serif';
+    mapCtx.textAlign = 'center';
+    mapCtx.fillText('⚠ Map image not found', CANVAS_W/2, CANVAS_H/2 - 10);
+    mapCtx.fillText('Use Upload Map button or open via http://localhost:3278', CANVAS_W/2, CANVAS_H/2 + 15);
+    render();
+  };
+  defaultMap.src = 'map.png';
+}
+
+init();
+</script>
+</body>
+</html>
