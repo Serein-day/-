@@ -1,0 +1,22 @@
+{
+  "name": "mapfighting",
+  "version": "1.0.0",
+  "description": "A Territory simulation sandbox game",
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static HTML project - no build needed'",
+    "lint": "echo 'No linter configured for static HTML'"
+  },
+  "keywords": [
+    "territory",
+    "simulation",
+    "strategy",
+    "game"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
